@@ -502,11 +502,23 @@ function CalendarApp({ session }) {
     const clean = displayName.trim();
     if (!clean) return;
     if (password) {
+      const { data: refreshed, error: refreshError } =
+        await supabase.auth.refreshSession();
+      if (refreshError || !refreshed.session) {
+        alert("Сеанс входа закончился. Войдите в календарь ещё раз, затем установите пароль.");
+        await supabase.auth.signOut();
+        return;
+      }
       const { error: passwordError } = await supabase.auth.updateUser({
         password,
       });
       if (passwordError) {
-        alert(`Не удалось установить пароль: ${passwordError.message}`);
+        if (passwordError.message.toLowerCase().includes("session")) {
+          alert("Сеанс входа закончился. Войдите в календарь ещё раз, затем установите пароль.");
+          await supabase.auth.signOut();
+        } else {
+          alert(`Не удалось установить пароль: ${passwordError.message}`);
+        }
         return;
       }
     }
