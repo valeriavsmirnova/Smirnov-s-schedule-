@@ -583,7 +583,7 @@ function CalendarApp({ session }) {
           </div>
         </div>
       </header>
-      <main className="calendar-wrap">
+      <main className={`calendar-wrap view-${viewMode}`}>
         <div className="toolbar">
           <div>
             <h1 className={`period-title ${viewMode}-period`}>{periodTitle}</h1>

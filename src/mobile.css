@@ -51,6 +51,7 @@
 
   /* On phones, keep event text readable by showing the week as a day list. */
   .week-view { overflow: hidden; }
+  .calendar-wrap.view-week .day-agenda { display: none !important; }
   .week-view .week-row { display: none; }
   .week-view .grid {
     display: flex;
@@ -128,6 +129,40 @@
     width: 18px;
     height: 18px;
     font-size: 8px;
+  }
+  .week-view .day.selected {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 92px;
+    padding: 12px 10px !important;
+    background: #f2f7f4;
+  }
+  .week-view .day.selected > span {
+    align-self: start;
+    min-height: 32px;
+    padding: 5px 6px;
+    border-radius: 16px;
+    background: #173f32 !important;
+    color: #fff !important;
+  }
+  .week-view .day.selected .event-list { gap: 7px; }
+  .week-view .day.selected .event {
+    grid-template-columns: 74px minmax(0, 1fr) 22px;
+    min-height: 42px;
+    padding: 8px 9px !important;
+    font-size: 12px !important;
+    white-space: normal;
+  }
+  .week-view .day.selected .event b { font-size: 10px !important; }
+  .week-view .day.selected .event > span {
+    font-size: 12px !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .week-view .day.selected .event-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
   }
 
   .overlay { align-items: end; padding: 0; background: #25211d88; }
