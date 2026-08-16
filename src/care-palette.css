@@ -92,6 +92,10 @@
   width: 100%;
 }
 
+.mobile-weekday {
+  display: none;
+}
+
 .time-field {
   position: relative;
   min-width: 0;

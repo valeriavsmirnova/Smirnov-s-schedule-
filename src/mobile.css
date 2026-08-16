@@ -69,7 +69,21 @@
     border-right: 0;
   }
   .week-view .day > span {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+    min-width: 38px;
+    color: #173f32 !important;
+    font-size: 12px !important;
     margin-top: 1px;
+  }
+  .week-view .mobile-weekday {
+    display: inline !important;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
   }
   .week-view .event-list {
     width: 100%;
@@ -89,8 +103,14 @@
     line-height: 1.2;
   }
   .week-view .event > i { display: none; }
-  .week-view .event b { font-size: 9px !important; white-space: nowrap; }
+  .week-view .event b {
+    display: block !important;
+    font-size: 9px !important;
+    white-space: nowrap;
+  }
   .week-view .event > span {
+    display: block !important;
+    font-size: 10px !important;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

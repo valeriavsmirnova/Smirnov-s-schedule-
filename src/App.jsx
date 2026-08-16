@@ -696,6 +696,9 @@ function CalendarApp({ session }) {
                   onDoubleClick={() => setModal({ date: key })}
                 >
                   <span className={today === key ? "today" : ""}>
+                    <small className="mobile-weekday">
+                      {d.toLocaleDateString("ru-RU", { weekday: "short" })}
+                    </small>
                     {d.getDate()}
                   </span>
                   <div
