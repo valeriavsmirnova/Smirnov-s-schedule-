@@ -313,6 +313,36 @@ header {
   line-height: 1.4;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #686158;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: #eee8de;
+  color: #123f68;
+  outline: none;
+}
+
 .overlay:has(.modal:not(.profile-modal)) {
   overflow: hidden;
   overscroll-behavior: contain;

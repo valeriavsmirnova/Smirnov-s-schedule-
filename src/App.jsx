@@ -4,6 +4,8 @@ import {
   ChevronRight,
   Clock3,
   Copy,
+  Eye,
+  EyeOff,
   History,
   LogOut,
   Plus,
@@ -192,6 +194,7 @@ function Splash() {
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit(e) {
@@ -222,15 +225,26 @@ function Login() {
             placeholder="name@example.com"
           />
           <label>Пароль</label>
-          <input
-            required
-            minLength="6"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Не менее 6 символов"
-          />
+          <div className="password-field">
+            <input
+              required
+              minLength="6"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Не менее 6 символов"
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+            </button>
+          </div>
           <button className="primary wide" disabled={busy}>
             {busy ? "Входим…" : "Войти"}
           </button>
@@ -757,6 +771,7 @@ function CalendarApp({ session }) {
 function ProfileModal({ profile, email, onSave, onClose }) {
   const [name, setName] = useState(profile?.display_name || "");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   return (
     <div
       className="overlay"
@@ -789,14 +804,25 @@ function ProfileModal({ profile, email, onSave, onClose }) {
           placeholder="Например, мама Лера"
         />
         <label>Новый пароль</label>
-        <input
-          type="password"
-          minLength="6"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Оставьте пустым, если менять не нужно"
-        />
+        <div className="password-field">
+          <input
+            type={showPassword ? "text" : "password"}
+            minLength="6"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Оставьте пустым, если менять не нужно"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+            title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+            onClick={() => setShowPassword((current) => !current)}
+          >
+            {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+          </button>
+        </div>
         <small className="profile-password-help">
           Не менее 6 символов. Пароль понадобится для входа без письма.
         </small>
