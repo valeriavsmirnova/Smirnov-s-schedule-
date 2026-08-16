@@ -7,6 +7,16 @@
     0 2px 6px color-mix(in srgb, var(--care) 20%, transparent) !important;
 }
 
+/* A family is created once by its owner; invited relatives only join it. */
+.onboarding:has(.join-family-form) {
+  width: min(480px, 100%);
+}
+
+.join-family-form {
+  margin-top: 22px;
+  text-align: left;
+}
+
 .agenda-event.has-care[style*="--care-bg"] {
   background: var(--care-bg) !important;
   border-color: var(--care) !important;

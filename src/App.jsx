@@ -840,22 +840,10 @@ function ProfileModal({ profile, email, onSave, onClose }) {
 
 function Onboarding({ profile, session, onDone }) {
   const [name, setName] = useState(profile?.display_name || ""),
-    [family, setFamily] = useState("Наша семья"),
     [code, setCode] = useState(""),
     [error, setError] = useState("");
-  async function create() {
-    setError("");
-    await supabase
-      .from("profiles")
-      .update({ display_name: name })
-      .eq("id", session.user.id);
-    const { error } = await supabase.rpc("create_family", {
-      family_name: family,
-    });
-    if (error) setError(error.message);
-    else onDone();
-  }
-  async function join() {
+  async function join(event) {
+    event.preventDefault();
     setError("");
     await supabase
       .from("profiles")
@@ -872,44 +860,28 @@ function Onboarding({ profile, session, onDone }) {
       <div className="card onboarding">
         <div className="brand-mark">С</div>
         <h1>Добро пожаловать!</h1>
-        <p>Как вас будут видеть другие участники?</p>
-        <label>Ваше имя</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Например, Маша"
-        />
-        <div className="split">
-          <div>
-            <h3>Создать календарь</h3>
-            <input value={family} onChange={(e) => setFamily(e.target.value)} />
-            <button
-              className="primary wide"
-              disabled={!name || !family}
-              onClick={create}
-            >
-              Создать семью
-            </button>
-          </div>
-          <div className="or">или</div>
-          <div>
-            <h3>Войти по коду</h3>
-            <input
-              className="code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="ABC123"
-            />
-            <button
-              className="secondary wide"
-              disabled={!name || !code}
-              onClick={join}
-            >
-              Присоединиться
-            </button>
-          </div>
-        </div>
-        {error && <p className="error">{error}</p>}
+        <p>Укажите своё имя и код приглашения, полученный от семьи.</p>
+        <form className="join-family-form" onSubmit={join}>
+          <label>Ваше имя</label>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Например, Маша"
+          />
+          <label>Код приглашения</label>
+          <input
+            required
+            className="code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="ABC123"
+          />
+          <button className="primary wide" disabled={!name || !code}>
+            Присоединиться к семье
+          </button>
+          {error && <p className="error">{error}</p>}
+        </form>
       </div>
     </main>
   );
