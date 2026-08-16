@@ -1,0 +1,1 @@
+Run `initial_schema.sql` once in the Supabase SQL Editor. It is intentionally named plainly because this starter was created before a local Supabase project was linked; after linking, create future migrations with `supabase migration new <name>`.
