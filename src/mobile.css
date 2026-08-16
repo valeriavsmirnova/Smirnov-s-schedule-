@@ -79,6 +79,13 @@
     font-size: 12px !important;
     margin-top: 1px;
   }
+  .week-view .day > span.today {
+    width: auto;
+    min-width: 38px;
+    padding: 4px 6px;
+    color: #fff !important;
+    border-radius: 14px;
+  }
   .week-view .mobile-weekday {
     display: inline !important;
     font-size: 9px;

@@ -294,22 +294,34 @@ function CalendarApp({ session }) {
         cursor.getMonth() + 2,
         10,
       ).toISOString();
-    const [{ data: e, error }, { data: a }] = await Promise.all([
+    const loadEvents = () =>
       supabase
         .from("events")
         .select("*, creator:profiles!events_created_by_fkey(display_name)")
         .eq("family_id", familyId)
         .lt("starts_at", end)
         .gt("ends_at", start)
-        .order("starts_at"),
-      supabase
-        .from("audit_log")
-        .select("*, actor:profiles!audit_log_actor_id_fkey(display_name)")
-        .eq("family_id", familyId)
-        .order("created_at", { ascending: false })
-        .limit(60),
-    ]);
-    if (error) setNotice(error.message);
+        .order("starts_at");
+    let eventResult;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      eventResult = await loadEvents();
+      if (!eventResult.error) break;
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+      }
+    }
+    const { data: a } = await supabase
+      .from("audit_log")
+      .select("*, actor:profiles!audit_log_actor_id_fkey(display_name)")
+      .eq("family_id", familyId)
+      .order("created_at", { ascending: false })
+      .limit(60);
+    const { data: e, error } = eventResult;
+    if (error) {
+      setNotice("Не удалось загрузить календарь. Нажмите здесь, чтобы повторить.");
+      return;
+    }
+    setNotice("");
     setEvents(e || []);
     setLogs(a || []);
   }
@@ -586,7 +598,14 @@ function CalendarApp({ session }) {
           </div>
         </div>
         {notice && (
-          <div className="notice" onClick={() => setNotice("")}>
+          <div
+            className="notice"
+            onClick={() =>
+              notice.startsWith("Не удалось загрузить календарь")
+                ? loadData()
+                : setNotice("")
+            }
+          >
             {notice}
           </div>
         )}
