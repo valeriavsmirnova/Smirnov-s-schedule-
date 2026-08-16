@@ -305,6 +305,14 @@ header {
   font-family: "Cormorant Garamond", serif !important;
 }
 
+.profile-password-help {
+  display: block;
+  margin-top: 6px;
+  color: #80786e;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .overlay:has(.modal:not(.profile-modal)) {
   overflow: hidden;
   overscroll-behavior: contain;

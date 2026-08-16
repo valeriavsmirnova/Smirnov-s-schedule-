@@ -191,17 +191,16 @@ function Splash() {
 
 function Login() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit(e) {
     e.preventDefault();
     setError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) setError(error.message);
-    else setSent(true);
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError("Неверная почта или пароль");
+    setBusy(false);
   }
   return (
     <main className="center auth-bg">
@@ -210,27 +209,33 @@ function Login() {
         <p className="eyebrow">ВСЁ В ОДНОМ МЕСТЕ</p>
         <h1>Семейный календарь</h1>
         <p>
-          Планы, которые видит вся семья. Войдите по ссылке из письма — пароль
-          не нужен.
+          Планы, которые видит вся семья. Войдите со своей почтой и паролем.
         </p>
-        {sent ? (
-          <div className="success">
-            Письмо отправлено на <b>{email}</b>. Откройте ссылку в нём.
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <label>Email</label>
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-            />
-            <button className="primary wide">Получить ссылку</button>
-            {error && <p className="error">{error}</p>}
-          </form>
-        )}
+        <form onSubmit={submit}>
+          <label>Email</label>
+          <input
+            required
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+          />
+          <label>Пароль</label>
+          <input
+            required
+            minLength="6"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Не менее 6 символов"
+          />
+          <button className="primary wide" disabled={busy}>
+            {busy ? "Входим…" : "Войти"}
+          </button>
+          {error && <p className="error">{error}</p>}
+        </form>
       </div>
     </main>
   );
@@ -464,18 +469,28 @@ function CalendarApp({ session }) {
     await loadBase();
     alert(`Код приглашения изменён на ${data}`);
   }
-  async function saveProfile(displayName) {
+  async function saveProfile(displayName, password) {
     const clean = displayName.trim();
     if (!clean) return;
+    if (password) {
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password,
+      });
+      if (passwordError) {
+        alert(`Не удалось установить пароль: ${passwordError.message}`);
+        return;
+      }
+    }
     const { error } = await supabase
       .from("profiles")
       .update({ display_name: clean })
       .eq("id", session.user.id);
-    if (error) alert(`Не удалось изменить имя: ${error.message}`);
+    if (error) alert(`Не удалось сохранить профиль: ${error.message}`);
     else {
       setProfile((current) => ({ ...current, display_name: clean }));
       setProfileOpen(false);
       loadData();
+      if (password) alert("Пароль установлен. Теперь можно входить без письма.");
     }
   }
   return (
@@ -741,6 +756,7 @@ function CalendarApp({ session }) {
 
 function ProfileModal({ profile, email, onSave, onClose }) {
   const [name, setName] = useState(profile?.display_name || "");
+  const [password, setPassword] = useState("");
   return (
     <div
       className="overlay"
@@ -750,7 +766,7 @@ function ProfileModal({ profile, email, onSave, onClose }) {
         className="modal profile-modal"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave(name);
+          onSave(name, password);
         }}
       >
         <div className="modal-head">
@@ -772,12 +788,24 @@ function ProfileModal({ profile, email, onSave, onClose }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Например, мама Лера"
         />
+        <label>Новый пароль</label>
+        <input
+          type="password"
+          minLength="6"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Оставьте пустым, если менять не нужно"
+        />
+        <small className="profile-password-help">
+          Не менее 6 символов. Пароль понадобится для входа без письма.
+        </small>
         <div className="modal-actions">
           <span />
           <button type="button" className="ghost" onClick={onClose}>
             Отмена
           </button>
-          <button className="primary">Сохранить имя</button>
+          <button className="primary">Сохранить</button>
         </div>
       </form>
     </div>
