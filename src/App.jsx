@@ -269,15 +269,18 @@ function CalendarApp({ session }) {
     [busy, setBusy] = useState(true),
     [notice, setNotice] = useState("");
   async function loadBase() {
-    const [{ data: p }, { data: m }] = await Promise.all([
+    const [{ data: p }, { data: memberships }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", session.user.id).single(),
       supabase
         .from("family_members")
         .select("family_id, role, families(*)")
-        .eq("user_id", session.user.id)
-        .limit(1)
-        .maybeSingle(),
+        .eq("user_id", session.user.id),
     ]);
+    const m = [...(memberships || [])].sort((left, right) => {
+      const leftCreated = left.families?.created_at || "";
+      const rightCreated = right.families?.created_at || "";
+      return leftCreated.localeCompare(rightCreated);
+    })[0];
     setProfile(p);
     setFamily(m?.families ? { ...m.families, memberRole: m.role } : null);
     setBusy(false);
