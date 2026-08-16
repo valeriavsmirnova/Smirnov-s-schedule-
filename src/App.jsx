@@ -276,11 +276,29 @@ function CalendarApp({ session }) {
         .select("family_id, role, families(*)")
         .eq("user_id", session.user.id),
     ]);
-    const m = [...(memberships || [])].sort((left, right) => {
+    const sortedMemberships = [...(memberships || [])].sort((left, right) => {
       const leftCreated = left.families?.created_at || "";
       const rightCreated = right.families?.created_at || "";
       return leftCreated.localeCompare(rightCreated);
-    })[0];
+    });
+    let m = sortedMemberships[0];
+    if (sortedMemberships.length > 1) {
+      const familyIds = sortedMemberships.map((item) => item.family_id);
+      const { data: familyEvents } = await supabase
+        .from("events")
+        .select("family_id")
+        .in("family_id", familyIds);
+      const eventCounts = (familyEvents || []).reduce((counts, event) => {
+        counts[event.family_id] = (counts[event.family_id] || 0) + 1;
+        return counts;
+      }, {});
+      m = sortedMemberships.reduce((best, candidate) =>
+        (eventCounts[candidate.family_id] || 0) >
+        (eventCounts[best.family_id] || 0)
+          ? candidate
+          : best,
+      );
+    }
     setProfile(p);
     setFamily(m?.families ? { ...m.families, memberRole: m.role } : null);
     setBusy(false);
