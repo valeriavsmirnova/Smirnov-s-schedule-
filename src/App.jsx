@@ -283,21 +283,33 @@ function CalendarApp({ session }) {
     });
     let m = sortedMemberships[0];
     if (sortedMemberships.length > 1) {
-      const familyIds = sortedMemberships.map((item) => item.family_id);
-      const { data: familyEvents } = await supabase
-        .from("events")
-        .select("family_id")
-        .in("family_id", familyIds);
-      const eventCounts = (familyEvents || []).reduce((counts, event) => {
-        counts[event.family_id] = (counts[event.family_id] || 0) + 1;
-        return counts;
-      }, {});
-      m = sortedMemberships.reduce((best, candidate) =>
-        (eventCounts[candidate.family_id] || 0) >
-        (eventCounts[best.family_id] || 0)
-          ? candidate
-          : best,
+      let savedFamilyId = null;
+      try {
+        savedFamilyId = localStorage.getItem(
+          `family-calendar:${session.user.id}`,
+        );
+      } catch {
+        // Private browsing can disable storage; family detection still works.
+      }
+      const savedMembership = sortedMemberships.find(
+        (item) => item.family_id === savedFamilyId,
       );
+      if (savedMembership) {
+        m = savedMembership;
+      } else {
+        const counts = await Promise.all(
+          sortedMemberships.map(async (item) => {
+            const { count, error } = await supabase
+              .from("events")
+              .select("id", { count: "exact", head: true })
+              .eq("family_id", item.family_id);
+            return { item, count: error ? -1 : count || 0 };
+          }),
+        );
+        m = counts.reduce((best, candidate) =>
+          candidate.count > best.count ? candidate : best,
+        ).item;
+      }
     }
     setProfile(p);
     setFamily(m?.families ? { ...m.families, memberRole: m.role } : null);
@@ -345,6 +357,13 @@ function CalendarApp({ session }) {
     setNotice("");
     setEvents(e || []);
     setLogs(a || []);
+    if (e?.length) {
+      try {
+        localStorage.setItem(`family-calendar:${session.user.id}`, familyId);
+      } catch {
+        // Keeping the calendar usable is more important than caching the choice.
+      }
+    }
   }
   useEffect(() => {
     loadBase();
