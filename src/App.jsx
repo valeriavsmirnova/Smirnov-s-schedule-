@@ -221,6 +221,18 @@ function CalendarApp({ session }) {
     [history, setHistory] = useState(false),
     [busy, setBusy] = useState(true),
     [notice, setNotice] = useState("");
+  function restoreCachedData(familyId) {
+    try {
+      const cached = JSON.parse(
+        localStorage.getItem(`family-calendar-data:${familyId}`) || "null",
+      );
+      if (!cached) return;
+      if (Array.isArray(cached.events)) setEvents(cached.events);
+      if (Array.isArray(cached.logs)) setLogs(cached.logs);
+    } catch {
+      // A damaged or unavailable cache must never prevent the calendar opening.
+    }
+  }
   async function loadBase() {
     let [{ data: p }, { data: memberships }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", session.user.id).single(),
@@ -279,8 +291,12 @@ function CalendarApp({ session }) {
         ).item;
       }
     }
+    const nextFamily = m?.families
+      ? { ...m.families, memberRole: m.role }
+      : null;
+    if (nextFamily) restoreCachedData(nextFamily.id);
     setProfile(p);
-    setFamily(m?.families ? { ...m.families, memberRole: m.role } : null);
+    setFamily(nextFamily);
     setBusy(false);
   }
   async function loadData(familyId = family?.id) {
@@ -303,6 +319,14 @@ function CalendarApp({ session }) {
         .lt("starts_at", end)
         .gt("ends_at", start)
         .order("starts_at");
+    const auditResultPromise = Promise.resolve(
+      supabase
+        .from("audit_log")
+        .select("*, actor:profiles!audit_log_actor_id_fkey(display_name)")
+        .eq("family_id", familyId)
+        .order("created_at", { ascending: false })
+        .limit(60),
+    );
     let eventResult;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       eventResult = await loadEvents();
@@ -311,12 +335,7 @@ function CalendarApp({ session }) {
         await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
       }
     }
-    const { data: a } = await supabase
-      .from("audit_log")
-      .select("*, actor:profiles!audit_log_actor_id_fkey(display_name)")
-      .eq("family_id", familyId)
-      .order("created_at", { ascending: false })
-      .limit(60);
+    const { data: a } = await auditResultPromise;
     const { data: e, error } = eventResult;
     if (error) {
       setNotice("Не удалось загрузить календарь. Нажмите здесь, чтобы повторить.");
@@ -325,6 +344,14 @@ function CalendarApp({ session }) {
     setNotice("");
     setEvents(e || []);
     setLogs(a || []);
+    try {
+      localStorage.setItem(
+        `family-calendar-data:${familyId}`,
+        JSON.stringify({ events: e || [], logs: a || [], savedAt: Date.now() }),
+      );
+    } catch {
+      // The live calendar still works if storage is full or unavailable.
+    }
     if (e?.length) {
       try {
         localStorage.setItem(`family-calendar:${session.user.id}`, familyId);
