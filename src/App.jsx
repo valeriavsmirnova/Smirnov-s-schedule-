@@ -815,7 +815,7 @@ function NameSetup({ onSave }) {
   const [name, setName] = useState("");
   const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false);
-  const names = ["Лера", "Миша", "Ира", "Сережа"];
+  const names = ["Лера", "Миша", "Ирина", "Сергей"];
   async function chooseName(value) {
     if (busy) return;
     setBusy(true);
