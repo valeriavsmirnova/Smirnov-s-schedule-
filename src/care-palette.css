@@ -319,6 +319,47 @@ header {
   font-family: "Cormorant Garamond", serif !important;
 }
 
+.invite-link {
+  letter-spacing: 0.08em !important;
+}
+
+.log-changes {
+  display: grid;
+  gap: 7px;
+  margin: 9px 0;
+  padding: 10px;
+  border-radius: 9px;
+  background: #f7f2ea;
+}
+
+.log-changes > div {
+  display: grid;
+  gap: 2px;
+}
+
+.log-changes b {
+  color: #776d61;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.log-changes span {
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.log-changes del {
+  color: #9d5549;
+}
+
+.log-changes ins {
+  color: #346b54;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .profile-password-help {
   display: block;
   margin-top: 6px;

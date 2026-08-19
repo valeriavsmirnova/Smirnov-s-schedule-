@@ -5,7 +5,6 @@ import {
   Clock3,
   Copy,
   History,
-  LogOut,
   Plus,
   Users,
   X,
@@ -149,13 +148,20 @@ function daysForWeek(cursor) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
   useEffect(() => {
     if (!supabase) {
       setLoading(false);
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        setSession(data.session);
+      } else {
+        const { data: anonymous, error } = await supabase.auth.signInAnonymously();
+        if (error) setAuthError(error.message);
+        else setSession(anonymous.session);
+      }
       setLoading(false);
     });
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
@@ -163,7 +169,7 @@ export default function App() {
   }, []);
   if (!supabase) return <Setup />;
   if (loading) return <Splash />;
-  if (!session) return <Login />;
+  if (authError || !session) return <AccessError error={authError} />;
   return <CalendarApp session={session} />;
 }
 
@@ -189,67 +195,14 @@ function Splash() {
   );
 }
 
-function Login() {
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
-  async function submit(e) {
-    e.preventDefault();
-    setError("");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: window.location.origin,
-        shouldCreateUser: false,
-      },
-    });
-    if (error) {
-      setError("Не удалось отправить письмо. Проверьте адрес или попробуйте позже.");
-    } else {
-      setSent(true);
-    }
-    setBusy(false);
-  }
+function AccessError({ error }) {
   return (
     <main className="center auth-bg">
       <div className="card auth-card">
         <div className="brand-mark">С</div>
-        <p className="eyebrow">ВСЁ В ОДНОМ МЕСТЕ</p>
-        <h1>Семейный календарь</h1>
-        <p>Планы, которые видит вся семья. Войдите по ссылке из письма.</p>
-        {sent ? (
-          <div className="success">
-            <p>
-              Ссылка для входа отправлена на <strong>{email.trim()}</strong>.
-              Откройте письмо и нажмите кнопку входа.
-            </p>
-            <button
-              type="button"
-              className="ghost wide"
-              onClick={() => setSent(false)}
-            >
-              Указать другую почту
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <label>Email</label>
-            <input
-              required
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-            />
-            <button className="primary wide" disabled={busy}>
-              {busy ? "Отправляем…" : "Получить ссылку для входа"}
-            </button>
-            {error && <p className="error">{error}</p>}
-          </form>
-        )}
+        <h1>Не удалось открыть календарь</h1>
+        <p>Обновите страницу. Если ошибка повторится, сообщите владельцу календаря.</p>
+        {error && <p className="error">{error}</p>}
       </div>
     </main>
   );
@@ -269,13 +222,28 @@ function CalendarApp({ session }) {
     [busy, setBusy] = useState(true),
     [notice, setNotice] = useState("");
   async function loadBase() {
-    const [{ data: p }, { data: memberships }] = await Promise.all([
+    let [{ data: p }, { data: memberships }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", session.user.id).single(),
       supabase
         .from("family_members")
         .select("family_id, role, families(*)")
         .eq("user_id", session.user.id),
     ]);
+    const sharedCode = new URLSearchParams(window.location.search).get("family");
+    if (!memberships?.length && sharedCode) {
+      const { error } = await supabase.rpc("join_family", {
+        invite_code: sharedCode,
+      });
+      if (error) {
+        setNotice("Ссылка недействительна. Попросите владельца прислать новую.");
+      } else {
+        const result = await supabase
+          .from("family_members")
+          .select("family_id, role, families(*)")
+          .eq("user_id", session.user.id);
+        memberships = result.data;
+      }
+    }
     const sortedMemberships = [...(memberships || [])].sort((left, right) => {
       const leftCreated = left.families?.created_at || "";
       const rightCreated = right.families?.created_at || "";
@@ -399,6 +367,8 @@ function CalendarApp({ session }) {
     return () => supabase.removeChannel(channel);
   }, [family?.id, cursor]);
   if (busy) return <Splash />;
+  if (family && session.user.is_anonymous && profile?.display_name === "Участник")
+    return <NameSetup onSave={saveProfile} />;
   if (!family)
     return <Onboarding profile={profile} session={session} onDone={loadBase} />;
   const days =
@@ -519,22 +489,6 @@ function CalendarApp({ session }) {
       setSelected(localDate(next));
     }
   }
-  async function rotateInviteCode() {
-    if (
-      !confirm("Сменить код приглашения? Старый код сразу перестанет работать.")
-    )
-      return;
-    const { data, error } = await supabase.rpc("rotate_family_invite_code", {
-      target_family_id: family.id,
-    });
-    if (error) {
-      alert(`Не удалось сменить код: ${error.message}`);
-      return;
-    }
-    setFamily((current) => ({ ...current, invite_code: data }));
-    await loadBase();
-    alert(`Код приглашения изменён на ${data}`);
-  }
   async function saveProfile(displayName) {
     const clean = displayName.trim();
     if (!clean) return;
@@ -569,13 +523,6 @@ function CalendarApp({ session }) {
               onClick={() => setProfileOpen(true)}
             >
               {(profile?.display_name || session.user.email)[0].toUpperCase()}
-            </button>
-            <button
-              className="icon"
-              title="Выйти"
-              onClick={() => supabase.auth.signOut()}
-            >
-              <LogOut size={18} />
             </button>
           </div>
         </div>
@@ -812,7 +759,6 @@ function CalendarApp({ session }) {
         <HistoryDrawer
           logs={logs}
           family={family}
-          onRotateCode={rotateInviteCode}
           onClose={() => setHistory(false)}
         />
       )}
@@ -862,6 +808,36 @@ function ProfileModal({ profile, email, onSave, onClose }) {
         </div>
       </form>
     </div>
+  );
+}
+
+function NameSetup({ onSave }) {
+  const [name, setName] = useState("");
+  return (
+    <main className="center auth-bg">
+      <form
+        className="card auth-card"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(name);
+        }}
+      >
+        <div className="brand-mark">С</div>
+        <p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ</p>
+        <h1>Как вас называть?</h1>
+        <p>Имя будет видно семье в истории изменений.</p>
+        <label>Ваше имя</label>
+        <input
+          autoFocus
+          required
+          maxLength="60"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Например, бабушка Таня"
+        />
+        <button className="primary wide">Открыть календарь</button>
+      </form>
+    </main>
   );
 }
 
@@ -1314,12 +1290,13 @@ function EventModal({ value, onClose, onSave, onDelete }) {
   );
 }
 
-function HistoryDrawer({ logs, family, onRotateCode, onClose }) {
+function HistoryDrawer({ logs, family, onClose }) {
   const verbs = {
     created: "добавил(а)",
     updated: "изменил(а)",
     deleted: "удалил(а)",
   };
+  const sharedUrl = `${window.location.origin}${window.location.pathname}?family=${encodeURIComponent(family.invite_code)}`;
   return (
     <div
       className="overlay drawer-overlay"
@@ -1338,41 +1315,57 @@ function HistoryDrawer({ logs, family, onRotateCode, onClose }) {
         <div className="invite">
           <Users />
           <div>
-            <small>Код приглашения</small>
-            <b>{family.invite_code}</b>
+            <small>Доступ для семьи</small>
+            <b className="invite-link">Общая ссылка календаря</b>
           </div>
           <div className="invite-actions">
             <button
               className="ghost"
-              onClick={() => navigator.clipboard.writeText(family.invite_code)}
+              onClick={async () => {
+                await navigator.clipboard.writeText(sharedUrl);
+                alert("Ссылка на календарь скопирована");
+              }}
             >
-              Копировать
+              Копировать ссылку
             </button>
-            {family.memberRole === "owner" && (
-              <button className="change-code" onClick={onRotateCode}>
-                Сменить код
-              </button>
-            )}
           </div>
         </div>
         <div className="timeline">
           {logs.length ? (
-            logs.map((l) => (
-              <div className="log" key={l.id}>
-                <span className={`dot ${l.action}`} />
-                <div>
-                  <p>
-                    <b>{l.actor?.display_name || "Участник"}</b>{" "}
-                    {verbs[l.action]} событие
-                  </p>
-                  <strong>{l.snapshot?.title || "Без названия"}</strong>
-                  <small>
-                    <Clock3 size={13} />
-                    {fmtLogDate(l.created_at)}
-                  </small>
+            logs.map((l) => {
+              const before = l.snapshot?.before;
+              const after = l.snapshot?.after;
+              const event = after || before || l.snapshot || {};
+              const changes = l.action === "updated"
+                ? eventChanges(before, after)
+                : [];
+              return (
+                <div className="log" key={l.id}>
+                  <span className={`dot ${l.action}`} />
+                  <div>
+                    <p>
+                      <b>{l.actor?.display_name || "Участник"}</b>{" "}
+                      {verbs[l.action]} событие
+                    </p>
+                    <strong>{event.title || "Без названия"}</strong>
+                    {changes.length > 0 && (
+                      <div className="log-changes">
+                        {changes.map((change) => (
+                          <div key={change.label}>
+                            <b>{change.label}</b>
+                            <span><del>{change.before}</del> → <ins>{change.after}</ins></span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <small>
+                      <Clock3 size={13} />
+                      {fmtLogDate(l.created_at)}
+                    </small>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <p className="empty">История пока пуста.</p>
           )}
@@ -1380,4 +1373,33 @@ function HistoryDrawer({ logs, family, onRotateCode, onClose }) {
       </aside>
     </div>
   );
+}
+
+function eventChanges(before, after) {
+  if (!before || !after) return [];
+  const fields = [
+    ["title", "Название"],
+    ["description", "Описание"],
+    ["starts_at", "Начало"],
+    ["ends_at", "Окончание"],
+    ["all_day", "Весь день"],
+    ["category", "Категория"],
+    ["care_by", "С кем"],
+  ];
+  return fields
+    .filter(([key]) => before[key] !== after[key])
+    .map(([key, label]) => ({
+      label,
+      before: formatHistoryValue(key, before[key]),
+      after: formatHistoryValue(key, after[key]),
+    }));
+}
+
+function formatHistoryValue(key, value) {
+  if (value === null || value === undefined || value === "") return "не указано";
+  if (key === "starts_at" || key === "ends_at") return fmtLogDate(value);
+  if (key === "all_day") return value ? "да" : "нет";
+  if (key === "category") return CATEGORIES[value]?.label || value;
+  if (key === "care_by") return CARE_OPTIONS[value]?.label || value;
+  return String(value);
 }
