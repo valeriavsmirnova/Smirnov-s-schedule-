@@ -813,29 +813,65 @@ function ProfileModal({ profile, email, onSave, onClose }) {
 
 function NameSetup({ onSave }) {
   const [name, setName] = useState("");
+  const [custom, setCustom] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const names = ["Лера", "Миша", "Ира", "Сережа"];
+  async function chooseName(value) {
+    if (busy) return;
+    setBusy(true);
+    await onSave(value);
+    setBusy(false);
+  }
   return (
     <main className="center auth-bg">
       <form
         className="card auth-card"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
-          onSave(name);
+          await chooseName(name);
         }}
       >
         <div className="brand-mark">С</div>
         <p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ</p>
-        <h1>Как вас называть?</h1>
-        <p>Имя будет видно семье в истории изменений.</p>
-        <label>Ваше имя</label>
-        <input
-          autoFocus
-          required
-          maxLength="60"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Например, бабушка Таня"
-        />
-        <button className="primary wide">Открыть календарь</button>
+        <h1>Кто вы?</h1>
+        <p>Выберите своё имя. Оно будет видно в истории изменений.</p>
+        <div className="name-options">
+          {names.map((item) => (
+            <button
+              type="button"
+              className="primary"
+              disabled={busy}
+              key={item}
+              onClick={() => chooseName(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+        {custom ? (
+          <>
+            <label>Другое имя</label>
+            <input
+              autoFocus
+              required
+              maxLength="60"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Введите имя"
+            />
+            <button className="primary wide" disabled={busy}>
+              {busy ? "Открываем…" : "Открыть календарь"}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="ghost wide"
+            onClick={() => setCustom(true)}
+          >
+            Другое имя
+          </button>
+        )}
       </form>
     </main>
   );

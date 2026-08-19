@@ -319,6 +319,18 @@ header {
   font-family: "Cormorant Garamond", serif !important;
 }
 
+.name-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.name-options button {
+  min-height: 52px;
+  font-size: 17px;
+}
+
 .invite-link {
   letter-spacing: 0.08em !important;
 }
