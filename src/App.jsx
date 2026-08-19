@@ -209,17 +209,36 @@ function AccessError({ error }) {
 }
 
 function CalendarApp({ session }) {
-  const [family, setFamily] = useState(null),
-    [profile, setProfile] = useState(null),
-    [events, setEvents] = useState([]),
-    [logs, setLogs] = useState([]);
+  const initialBase = useMemo(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem(`family-calendar-base:${session.user.id}`) || "null",
+      );
+    } catch {
+      return null;
+    }
+  }, [session.user.id]);
+  const initialData = useMemo(() => {
+    if (!initialBase?.family?.id) return null;
+    try {
+      return JSON.parse(
+        localStorage.getItem(`family-calendar-data:${initialBase.family.id}`) || "null",
+      );
+    } catch {
+      return null;
+    }
+  }, [initialBase]);
+  const [family, setFamily] = useState(initialBase?.family || null),
+    [profile, setProfile] = useState(initialBase?.profile || null),
+    [events, setEvents] = useState(initialData?.events || []),
+    [logs, setLogs] = useState(initialData?.logs || []);
   const [cursor, setCursor] = useState(new Date()),
     [selected, setSelected] = useState(localDate(new Date())),
     [viewMode, setViewMode] = useState("month"),
     [modal, setModal] = useState(null),
     [profileOpen, setProfileOpen] = useState(false),
     [history, setHistory] = useState(false),
-    [busy, setBusy] = useState(true),
+    [busy, setBusy] = useState(!initialBase?.family),
     [notice, setNotice] = useState("");
   function restoreCachedData(familyId) {
     try {
@@ -297,6 +316,16 @@ function CalendarApp({ session }) {
     if (nextFamily) restoreCachedData(nextFamily.id);
     setProfile(p);
     setFamily(nextFamily);
+    if (nextFamily) {
+      try {
+        localStorage.setItem(
+          `family-calendar-base:${session.user.id}`,
+          JSON.stringify({ family: nextFamily, profile: p }),
+        );
+      } catch {
+        // Live data remains available when local storage cannot be used.
+      }
+    }
     setBusy(false);
   }
   async function loadData(familyId = family?.id) {
@@ -525,7 +554,18 @@ function CalendarApp({ session }) {
       .eq("id", session.user.id);
     if (error) alert(`Не удалось сохранить профиль: ${error.message}`);
     else {
-      setProfile((current) => ({ ...current, display_name: clean }));
+      const nextProfile = { ...profile, display_name: clean };
+      setProfile(nextProfile);
+      if (family) {
+        try {
+          localStorage.setItem(
+            `family-calendar-base:${session.user.id}`,
+            JSON.stringify({ family, profile: nextProfile }),
+          );
+        } catch {
+          // The profile is still updated on the server.
+        }
+      }
       setProfileOpen(false);
       loadData();
     }
